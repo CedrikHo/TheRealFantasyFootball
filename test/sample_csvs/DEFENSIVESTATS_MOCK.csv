@@ -1,0 +1,4 @@
+id,tkl_astd,tkl_solo,pass_def,def_sck,def_td,def_int,fum_forced,fum_recovered
+1,2,5,1,0.5,0,0,0,0
+2,0,3,0,1.0,0,1,0,0
+3,1,4,2,0,1,0,1,0

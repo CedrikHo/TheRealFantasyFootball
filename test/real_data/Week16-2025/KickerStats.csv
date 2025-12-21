@@ -1,0 +1,21 @@
+rank,id,player,team,pos,game.week,opp,fg,fg_att,fg_pct,fg_long,xp,xp_att,fpts_ppr
+1,25315,Charlie Smyth,NO,K,16,NYJ,5,6,83.3,50,2,2,19.0
+2,25119,Harrison Mevis,LAR,K,16,SEA,3,4,75.0,41,4,4,13.0
+3,16301,Cairo Santos,CHI,K,16,GB,3,3,100.0,51,1,1,12.0
+4,19073,Harrison Butker,KC,K,16,TEN,3,4,75.0,54,0,0,11.0
+5,26108,Ryan Fitzgerald,CAR,K,16,TB,3,3,100.0,48,2,2,11.0
+6,25113,Will Reichard,MIN,K,16,NYG,3,3,100.0,43,1,1,10.0
+7,21542,Chase McLaughlin,TB,K,16,CAR,2,2,100.0,50,2,2,10.0
+8,14996,Brandon McManus,GB,K,16,CHI,3,3,100.0,28,1,1,10.0
+9,23567,Cameron Dicker,LAC,K,16,DAL,2,2,100.0,37,4,4,10.0
+10,22908,Evan McPherson,CIN,K,16,MIA,1,1,100.0,45,6,6,9.0
+11,24575,Andre Szmyt,CLE,K,16,BUF,2,2,100.0,41,2,2,8.0
+12,26107,Ben Sauls,NYG,K,16,MIN,2,2,100.0,39,1,1,7.0
+13,21519,Joey Slye,TEN,K,16,KC,1,1,100.0,27,3,3,6.0
+14,11694,Nick Folk,NYJ,K,16,NO,2,2,100.0,36,0,0,6.0
+15,24902,Brandon Aubrey,DAL,K,16,LAC,1,1,100.0,33,2,2,5.0
+16,20144,Michael Badgley,BUF,K,16,CLE,1,1,100.0,41,2,3,5.0
+17,24423,Jake Moody,WAS,K,16,PHI,1,1,100.0,20,1,1,4.0
+18,19041,Jake Elliott,PHI,K,16,WAS,0,2,0.0,0,3,3,3.0
+19,22863,Riley Patterson,MIA,K,16,CIN,0,0,,0,3,3,3.0
+20,17215,Jason Myers,SEA,K,16,LAR,0,0,,0,2,2,2.0

@@ -99,6 +99,45 @@ If you want, I can also:
 
 If you'd like me to add an example GitHub Action that builds artifacts and uploads them, say which platforms/runners you prefer and I'll create it.
 
+**Troubleshooting: Wine and Windows builds**
+
+When building Windows artifacts on macOS, Nativefier (via electron-packager) may fail because it expects a `wine64` binary to exist. Typical failure looks like:
+
+```
+WrapperError: Wrapper command 'wine64' not found on the system.
+```
+
+What we did to resolve this locally:
+
+1. Install a Wine variant (example using a community cask):
+
+```bash
+brew tap gcenx/wine
+brew install --cask --no-quarantine gcenx/wine-devel
+```
+
+2. Create a `wine64` shim that points to the installed `wine` binary so tooling that expects `wine64` succeeds:
+
+```bash
+WINE_BIN="$(command -v wine)"
+ln -s "$WINE_BIN" "$(brew --prefix)/bin/wine64"
+# verify
+command -v wine64
+wine64 --version
+```
+
+What the commands do:
+
+- `command -v wine` finds the installed `wine` executable and stores its path in `WINE_BIN`.
+- `ln -s "$WINE_BIN" "$(brew --prefix)/bin/wine64"` creates a symbolic link named `wine64` in your Homebrew `bin` directory that points to the real `wine` binary (so `wine64` is on your `PATH`).
+- `command -v wine64` and `wine64 --version` confirm the shim works.
+
+Notes and caveats:
+
+- A shim makes `wine64` detectable, but if the underlying `wine` build lacks full 64-bit support packaging may still fail. In that case either use a different Wine distribution or build Windows artifacts on a native Windows runner (GitHub Actions `windows-latest`) which avoids Wine entirely.
+- On Apple Silicon you may need Rosetta or an x86 Homebrew install for some Wine builds; CI on `windows-latest` is the most robust option for Windows artifacts.
+- If you prefer, I can add a GitHub Actions workflow that builds Windows artifacts on `windows-latest` and uploads them as build artifacts.
+
 Recent changes to `utils.py`
 
 - The `compute(df1, df2, df3)` function now merges the three uploaded CSVs on `id`, resolves duplicate-suffixed columns (e.g. `_df2`, `_df3`), and runs `CalculatePoints` to produce the final result DataFrame.
