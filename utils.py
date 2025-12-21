@@ -193,11 +193,23 @@ def aggregate_team_scores(final_df: pd.DataFrame, teams: list) -> dict:
             per_team_csv[name] = b''
             continue
 
-        id_col = find_id_col(team_df)
-        # normalize id column name to 'id' for merging
-        team_df = team_df.rename(columns={id_col: 'id'})
+        # Enforce that team CSVs MUST provide an id column (or accepted variants).
+        lower_cols = {c.lower(): c for c in team_df.columns}
+        id_candidates = ('id', 'player id', 'player_id', 'playerid')
+        found_id = None
+        for cand in id_candidates:
+            if cand in lower_cols:
+                found_id = lower_cols[cand]
+                break
 
-        # Merge with final_df on 'id' to get stats
+        if not found_id:
+            # Do not attempt name-based matching — id is mandatory.
+            per_team[name] = pd.DataFrame()
+            per_team_csv[name] = b''
+            continue
+
+        # normalize id column name to 'id' for merging
+        team_df = team_df.rename(columns={found_id: 'id'})
         merged = pd.merge(team_df, final_df, on='id', how='left', suffixes=('', '_final'))
 
         # Fill missing numeric columns with 0
@@ -251,20 +263,33 @@ def aggregate_team_scores(final_df: pd.DataFrame, teams: list) -> dict:
         csv_bytes = out_df.to_csv(index=False).encode('utf-8')
         per_team_csv[name] = csv_bytes
 
-        # add rows for combined
-        for _, r in out_df.iterrows():
-            row = r.to_dict()
-            row['team'] = name
-            row['team_calc'] = team_calc
-            row['team_total'] = team_total
-            combined_rows.append(row)
+        # prepare per-team DataFrame for combined output (preserve order, add team metadata)
+        out_for_combined = out_df.copy()
+        out_for_combined['team'] = name
+        out_for_combined['team_calc'] = team_calc
+        out_for_combined['team_total'] = team_total
+        combined_rows.append(out_for_combined)
 
+    # Build combined_df by concatenating per-team DataFrames (no all-NA separator frames)
     if combined_rows:
-        combined_df = pd.DataFrame(combined_rows)
+        combined_df = pd.concat(combined_rows, ignore_index=True)
+        # Normalize dtypes to pandas nullable types to avoid future concat dtype inference changes
+        try:
+            combined_df = combined_df.convert_dtypes()
+        except Exception:
+            pass
     else:
         combined_df = pd.DataFrame()
 
-    combined_csv = combined_df.to_csv(index=False).encode('utf-8') if not combined_df.empty else b''
+    # For the downloadable combined CSV, join each per-team CSV string with a blank line between teams
+    if combined_rows:
+        csv_parts = []
+        for part in combined_rows:
+            csv_parts.append(part.to_csv(index=False))
+        combined_csv_str = "\n".join(csv_parts)
+        combined_csv = combined_csv_str.encode('utf-8')
+    else:
+        combined_csv = b''
 
     return {
         'per_team': per_team,

@@ -39,17 +39,24 @@ with tabs[1]:
 
     all_present = (f1 is not None and f2 is not None and f3 is not None)
     if st.button("Submit", disabled=not all_present, key='submit_compute'):
-        try:
-            df1 = pd.read_csv(f1)
-            df2 = pd.read_csv(f2)
-            df3 = pd.read_csv(f3)
-            result_df = compute(df1, df2, df3)
-            csv_bytes = result_df.to_csv(index=False).encode('utf-8')
-            timestamp = datetime.utcnow().isoformat(timespec='seconds') + 'Z'
-            st.session_state['results'].append({'timestamp': timestamp, 'csv': csv_bytes})
-            st.success("Computation finished and saved to Results.")
-        except Exception as e:
-            st.error(f"Error during computation: {e}")
+        # Use the session_state-backed uploader values (more stable across reruns)
+        f1_obj = st.session_state.get('compute_f1', f1)
+        f2_obj = st.session_state.get('compute_f2', f2)
+        f3_obj = st.session_state.get('compute_f3', f3)
+        if not (f1_obj and f2_obj and f3_obj):
+            st.error("Please upload all three CSVs before submitting.")
+        else:
+            try:
+                df1 = pd.read_csv(f1_obj)
+                df2 = pd.read_csv(f2_obj)
+                df3 = pd.read_csv(f3_obj)
+                result_df = compute(df1, df2, df3)
+                csv_bytes = result_df.to_csv(index=False).encode('utf-8')
+                timestamp = datetime.utcnow().isoformat(timespec='seconds') + 'Z'
+                st.session_state['results'].append({'timestamp': timestamp, 'csv': csv_bytes})
+                st.success("Computation finished and saved to Results.")
+            except Exception as e:
+                st.error(f"Error during computation: {e}")
 
 with tabs[2]:
     st.header("Teams")
@@ -62,17 +69,44 @@ with tabs[2]:
             return
         try:
             df_team = pd.read_csv(team_file_cb)
+
+            # Validate presence of an id column and that every row has a non-empty id
+            lower = {c.lower(): c for c in df_team.columns}
+            id_candidates = ('id', 'player id', 'player_id', 'playerid')
+            found_id = None
+            for cand in id_candidates:
+                if cand in lower:
+                    found_id = lower[cand]
+                    break
+            if not found_id:
+                st.session_state['_team_add_error'] = "Malformed team CSV: missing required 'id' column. Every row must include an id."
+                return
+
+            ids = df_team[found_id]
+            missing_mask = ids.isnull() | (ids.astype(str).str.strip() == '')
+            if missing_mask.any():
+                st.session_state['_team_add_error'] = f"Malformed team CSV: {missing_mask.sum()} row(s) missing id. Every row must include an id."
+                return
+
             csv_bytes = df_team.to_csv(index=False).encode('utf-8')
             timestamp = datetime.utcnow().isoformat(timespec='seconds') + 'Z'
             st.session_state['teams'].append({'name': team_name_cb, 'csv': csv_bytes, 'timestamp': timestamp, 'rows': len(df_team)})
-            # note: do NOT assign to widget-backed keys like 'team_file_upload' — Streamlit forbids this
             # record success for display
             st.session_state['_last_team_added'] = team_name_cb
-            # Note: some Streamlit installs don't expose `experimental_rerun()`.
-            # Instead set a flag so UI can show a refresh hint to the user.
+            # set a hint that a refresh may be needed
             st.session_state['_need_refresh'] = True
         except Exception as e:
             st.session_state['_team_add_error'] = str(e)
+
+    # callback to remove a team by index (use on_click so Streamlit reruns reliably)
+    def _remove_team_cb(idx: int):
+        teams = st.session_state.get('teams', [])
+        if 0 <= idx < len(teams):
+            removed = teams.pop(idx)
+            st.session_state['teams'] = teams
+            st.session_state['_last_team_removed'] = removed.get('name', f"team_{idx}")
+            # set refresh hint so UI shows the updated state; do not call experimental_rerun()
+            st.session_state['_need_refresh'] = True
 
     col_name, col_file, col_action = st.columns([2, 3, 1])
     with col_name:
@@ -97,9 +131,7 @@ with tabs[2]:
         for i, t in enumerate(list(st.session_state['teams'])):
             with st.expander(f"{t['name']} — {t['rows']} players — {t['timestamp']}"):
                 st.download_button(label="Download CSV", data=t['csv'], file_name=f"{t['name'].replace(' ','_')}.csv", mime="text/csv", key=f"download_team_{i}")
-                if st.button("Remove team", key=f"remove_team_{i}"):
-                    st.session_state['teams'].pop(i)
-                    st.experimental_rerun()
+                st.button("Remove team", key=f"remove_team_{i}", on_click=_remove_team_cb, args=(i,))
 
 with tabs[3]:
     st.header("Results")
@@ -142,6 +174,18 @@ with tabs[3]:
 
                 st.markdown("---")
                 st.subheader("Team Summaries")
+                # show a compact team totals table for quick scanning
+                try:
+                    totals_rows = []
+                    for nm, df_t in per_team.items():
+                        totals_rows.append({'team': nm, 'team_total': df_t.attrs.get('team_total', 0.0)})
+                    if totals_rows:
+                        import pandas as _pd
+                        totals_df = _pd.DataFrame(totals_rows)
+                        st.markdown("**Team totals**")
+                        st.dataframe(totals_df.sort_values('team').reset_index(drop=True))
+                except Exception:
+                    pass
                 for idx, (team_name, df_team) in enumerate(per_team.items()):
                     with st.expander(f"{team_name} — {df_team.attrs.get('team_total', 0):.2f}"):
                         st.write(df_team)
@@ -150,7 +194,12 @@ with tabs[3]:
                             chart = df_team.set_index('id')['Total_Points']
                             st.bar_chart(chart)
 
-                        st.write("Team calculation:", df_team.attrs.get('team_calc', ''))
+                        # display team total and calculation string explicitly
+                        team_total = df_team.attrs.get('team_total', 0.0)
+                        team_calc = df_team.attrs.get('team_calc', '')
+                        st.markdown(f"**Team total:** {team_total:.2f}")
+                        if team_calc:
+                            st.write("Team calculation:", team_calc)
                         st.download_button(label=f"Download {team_name} CSV", data=per_team_csv.get(team_name, b''), file_name=f"{team_name.replace(' ','_')}_calc.csv", mime='text/csv', key=f"download_team_result_{idx}")
 
                 st.markdown("---")
