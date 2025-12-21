@@ -1,0 +1,30 @@
+{
+  "name": "fantasy_streamlit",
+  "version": "1.0.0",
+  "description": "This is a minimal Streamlit app scaffold that accepts three CSV uploads, runs the project `compute` function (adapted from the Lambda code), and shows downloadable results with timestamps.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-native": "nativefier --name \"MyFantasyApp\" \"https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/\" --platform mac",
+    "build-native-win-x64": "npx nativefier --name \"MyFantasyApp-win32-x64\" --platform windows --arch x64 \"https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/\" native_build/MyFantasyApp-win32-x64",
+    "build-native-linux-x64": "npx nativefier --name \"MyFantasyApp-linux-x64\" --platform linux --arch x64 \"https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/\" native_build/MyFantasyApp-linux-x64",
+    "build-native-mac-x64": "npx nativefier --name \"MyFantasyApp-darwin-x64\" --platform mac --arch x64 \"https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/\" native_build/MyFantasyApp-darwin-x64",
+    "build-native-mac-arm64": "npx nativefier --name \"MyFantasyApp-darwin-arm64\" --platform mac --arch arm64 \"https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/\" native_build/MyFantasyApp-darwin-arm64",
+    "build-native-all": "mkdir -p native_build && npm run build-native-win-x64 && npm run build-native-linux-x64 && npm run build-native-mac-x64 && npm run build-native-mac-arm64"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CedrikHo/TheRealFantasyFootball.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CedrikHo/TheRealFantasyFootball/issues"
+  },
+  "homepage": "https://github.com/CedrikHo/TheRealFantasyFootball#readme"
+}

@@ -30,6 +30,75 @@ Deployment notes:
 - Streamlit Community Cloud: push this repo to GitHub and follow Streamlit Cloud docs.
 - AWS App Runner / App Runner on ECR: build and push the container image, then create an App Runner service.
 
+**Desktop packaging (Nativefier)**
+This repository includes convenience npm scripts that use `nativefier` to create desktop wrappers for the hosted Streamlit URL. The repo scripts call `npx` so you can build from the repository without a global install (recommended to add `nativefier` as a devDependency).
+
+Quick summary of what we added to this repo:
+
+- `package.json` contains per-platform scripts:
+	- `npm run build-native-win-x64`
+	- `npm run build-native-win-ia32`
+	- `npm run build-native-linux-x64`
+	- `npm run build-native-mac-x64`
+	- `npm run build-native-mac-arm64`
+	- `npm run build-native-all` — runs all of the above and places outputs in `native_build/`
+
+How to use (recommended reproducible flow):
+
+1. Ensure Node and npm are installed (or use `nvm` to manage versions):
+
+```bash
+node -v
+npm -v
+```
+
+2. Install `nativefier` as a local devDependency (optional but recommended for reproducible builds):
+
+```bash
+npm install --save-dev nativefier
+```
+
+3. Build one platform (example — mac x64):
+
+```bash
+npm run build-native-mac-x64
+```
+
+4. Build all platforms into `native_build/` (this runs each per-platform script sequentially):
+
+```bash
+npm run build-native-all
+```
+
+Notes on `npx` vs global install:
+
+- `npx nativefier ...` runs Nativefier on-demand (no global install). Our npm scripts use `npx` so the locally installed devDependency will be used when present, otherwise `npx` will fetch a matching version temporarily.
+- If you prefer a system-wide CLI, install globally: `npm install -g nativefier` and run `nativefier <URL>` directly.
+
+Where outputs go:
+
+- By default the scripts create per-platform folders under `native_build/`, e.g. `native_build/MyFantasyApp-win32-x64`.
+
+Caveats and cross-build notes:
+
+- Cross-building is possible for many platforms but has limitations:
+	- Building macOS `.app` artifacts generally requires a macOS build machine (some mac builds may fail on Linux/Windows). If you need mac `.app` artifacts reproducibly, run the mac builds on macOS runners or machines.
+	- Building Windows installers may require `wine` to create certain installer formats when building on non-Windows hosts.
+	- If you target Apple Silicon, use the `--arch arm64` script (we added `build-native-mac-arm64`). You can also build `universal` mac apps with `--arch universal` on macOS hosts.
+
+Direct `npx` example (one-off):
+
+```bash
+npx nativefier --name "MyFantasyApp" "https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/" --platform mac --arch x64
+```
+
+If you want, I can also:
+
+- add a small GitHub Actions workflow that runs `npm ci` and `npm run build-native-all` on platform-appropriate runners and uploads artifacts to Releases, or
+- tweak the scripts to create platform-specific installers (Squirrel, NSIS) which may require extra dependencies (`wine`, `makensis`) on CI.
+
+If you'd like me to add an example GitHub Action that builds artifacts and uploads them, say which platforms/runners you prefer and I'll create it.
+
 Recent changes to `utils.py`
 
 - The `compute(df1, df2, df3)` function now merges the three uploaded CSVs on `id`, resolves duplicate-suffixed columns (e.g. `_df2`, `_df3`), and runs `CalculatePoints` to produce the final result DataFrame.
