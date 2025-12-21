@@ -57,6 +57,8 @@ streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 
 Open http://localhost:8501 in your browser. In the `Compute` tab upload the three CSVs (ALLPLAYERSTATS.CSV, DEFENSIVESTATS.CSV, KICKERSTATS.CSV), click `Submit`, then view/download the result on the `Results` tab.
 
+Note: Streamlit binds to `0.0.0.0` when started with `--server.address 0.0.0.0`, but you must open the app in your browser using `http://localhost:8501` (or your machine's IP). Do not use `0.0.0.0` in the browser address bar.
+
 If you already have the sample CSVs in the repo root you can upload them directly from the file picker.
 
 Testing with the example CSVs
