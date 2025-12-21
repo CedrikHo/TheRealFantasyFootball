@@ -44,14 +44,20 @@ Expected CSV filenames and UI notes
 	- `KICKERSTATS.CSV`
 - The app will accept any uploaded file, but it displays a gentle warning if the uploaded filename doesn't match the expected name. The contents (columns) are what's important.
 
-Run locally (virtualenv recommended)
+**Run locally**
+
+Create a virtual environment, install dependencies, and start Streamlit:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run app.py
+streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 ```
+
+Open http://localhost:8501 in your browser. In the `Compute` tab upload the three CSVs (ALLPLAYERSTATS.CSV, DEFENSIVESTATS.CSV, KICKERSTATS.CSV), click `Submit`, then view/download the result on the `Results` tab.
+
+If you already have the sample CSVs in the repo root you can upload them directly from the file picker.
 
 Testing with the example CSVs
 
@@ -85,4 +91,11 @@ How teammates know to use this env:
 
 - Include the setup steps (above) in this `README.md` so anyone cloning the repo follows them.
 - Optionally add a short `setup.sh` that creates and activates the env and installs deps; developers can run it once.
+
+
+Upload limit (global/shared)
+
+This app uses a per-project Streamlit config (config.toml) to raise the server.maxUploadSize limit. Streamlit enforces a per-file upload limit (value is in MB), but for this project treat the limit as a global/shared guideline: keep the combined size of the three CSVs (ALLPLAYERSTATS.CSV, DEFENSIVESTATS.CSV, KICKERSTATS.CSV) below the configured maximum to avoid memory/timeouts.
+We recommend setting maxUploadSize to a safe value (for example 2048 for ~2 GB per file) in config.toml. Note that hosting providers (Streamlit Community Cloud, proxies, or load balancers) may enforce their own limits.
+See Streamlit docs for details: https://docs.streamlit.io/knowledge-base/deploy/increase-file-uploader-limit-streamlit-cloud
 
