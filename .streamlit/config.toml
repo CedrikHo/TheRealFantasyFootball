@@ -1,0 +1,8 @@
+[server]
+maxUploadSize = 2048  # megabytes (per-file limit configured; we'll treat this as a practical combined cap)
+headless = true
+port = 8501
+address = "0.0.0.0"
+
+[browser]
+gatherUsageStats = false

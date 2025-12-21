@@ -129,3 +129,146 @@ def compute(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataF
     final_df = handle_duplicate_columns(merged_df)
     result_df = CalculatePoints(final_df)
     return result_df
+
+
+def aggregate_team_scores(final_df: pd.DataFrame, teams: list) -> dict:
+    """Aggregate per-player and per-team scores with transparent calculation strings.
+
+    Args:
+        final_df: DataFrame containing player stats and the columns
+            'Total_Kicking_PTS', 'Total_defensive_PTS', 'Total_Offensive_PTS' and 'id'.
+        teams: list of dicts where each dict has at least 'name' and either 'csv' (bytes)
+            or 'df' (DataFrame). Example: {'name': 'Jake', 'csv': b'...'}
+
+    Returns:
+        A dict with keys:
+          - 'per_team': {team_name: DataFrame}
+          - 'per_team_csv': {team_name: bytes}
+          - 'combined_df': DataFrame (rows for all teams with team name)
+          - 'combined_csv': bytes
+    """
+    from io import BytesIO
+
+    # Ensure final_df has the needed columns
+    needed = ['id', 'Total_Kicking_PTS', 'Total_defensive_PTS', 'Total_Offensive_PTS']
+    for c in needed:
+        if c not in final_df.columns:
+            raise ValueError(f"final_df missing required column: {c}")
+
+    per_team = {}
+    per_team_csv = {}
+    combined_rows = []
+
+    def load_team_df(team):
+        if isinstance(team, dict) and 'df' in team and isinstance(team['df'], pd.DataFrame):
+            return team['df'].copy()
+        if isinstance(team, dict) and 'csv' in team:
+            bio = BytesIO(team['csv'])
+            return pd.read_csv(bio)
+        # if team is a DataFrame itself
+        if isinstance(team, pd.DataFrame):
+            return team.copy()
+        raise ValueError('team must be dict with csv or df, or a DataFrame')
+
+    def find_id_col(df):
+        lower = {c.lower(): c for c in df.columns}
+        for candidate in ('id', 'player id', 'player_id', 'playerid'):
+            if candidate in lower:
+                return lower[candidate]
+        # fallback to first numeric-looking column
+        for c in df.columns:
+            if df[c].dtype.kind in ('i', 'u', 'f'):
+                return c
+        # last fallback
+        return df.columns[0]
+
+    for team in teams:
+        name = team.get('name') if isinstance(team, dict) else None
+        if not name:
+            name = getattr(team, 'name', None) or 'unnamed'
+        try:
+            team_df = load_team_df(team)
+        except Exception:
+            per_team[name] = pd.DataFrame()
+            per_team_csv[name] = b''
+            continue
+
+        id_col = find_id_col(team_df)
+        # normalize id column name to 'id' for merging
+        team_df = team_df.rename(columns={id_col: 'id'})
+
+        # Merge with final_df on 'id' to get stats
+        merged = pd.merge(team_df, final_df, on='id', how='left', suffixes=('', '_final'))
+
+        # Fill missing numeric columns with 0
+        for c in ['Total_Kicking_PTS', 'Total_defensive_PTS', 'Total_Offensive_PTS']:
+            if c not in merged.columns:
+                merged[c] = 0
+            merged[c] = pd.to_numeric(merged[c], errors='coerce').fillna(0)
+
+        # Per-player total and calculation string
+        merged['Total_Points'] = merged['Total_Kicking_PTS'] + merged['Total_defensive_PTS'] + merged['Total_Offensive_PTS']
+        def make_calc(row):
+            a = float(row['Total_Kicking_PTS'])
+            b = float(row['Total_defensive_PTS'])
+            c = float(row['Total_Offensive_PTS'])
+            s = f"{a:.2f} + {b:.2f} + {c:.2f} = {a+b+c:.2f}"
+            return s
+        merged['calculation_str'] = merged.apply(make_calc, axis=1)
+
+        # Team level transparency
+        totals = merged['Total_Points'].fillna(0).tolist()
+        if totals:
+            parts = [f"{v:.2f}" for v in totals]
+            team_total = sum(totals)
+            team_calc = " + ".join(parts) + f" = {team_total:.2f}"
+        else:
+            team_calc = ""
+            team_total = 0.0
+
+        # Select columns to present
+        present_cols = [c for c in merged.columns if c in ('id', 'first', 'last', 'position')]
+        # ensure some name columns exist
+        if 'first' not in merged.columns and 'player' in merged.columns:
+            merged['first'] = merged['player']
+        if 'last' not in merged.columns:
+            merged['last'] = ''
+
+        out_df = merged.copy()
+        # keep useful columns plus calculation
+        keep_cols = []
+        for c in ('id', 'first', 'last', 'position'):
+            if c in out_df.columns:
+                keep_cols.append(c)
+        keep_cols += ['Total_Kicking_PTS', 'Total_defensive_PTS', 'Total_Offensive_PTS', 'Total_Points', 'calculation_str']
+        out_df = out_df.reindex(columns=[c for c in keep_cols if c in out_df.columns])
+
+        # add team summary row metadata as attributes
+        out_df.attrs['team_total'] = team_total
+        out_df.attrs['team_calc'] = team_calc
+
+        per_team[name] = out_df
+        csv_bytes = out_df.to_csv(index=False).encode('utf-8')
+        per_team_csv[name] = csv_bytes
+
+        # add rows for combined
+        for _, r in out_df.iterrows():
+            row = r.to_dict()
+            row['team'] = name
+            row['team_calc'] = team_calc
+            row['team_total'] = team_total
+            combined_rows.append(row)
+
+    if combined_rows:
+        combined_df = pd.DataFrame(combined_rows)
+    else:
+        combined_df = pd.DataFrame()
+
+    combined_csv = combined_df.to_csv(index=False).encode('utf-8') if not combined_df.empty else b''
+
+    return {
+        'per_team': per_team,
+        'per_team_csv': per_team_csv,
+        'combined_df': combined_df,
+        'combined_csv': combined_csv,
+    }
