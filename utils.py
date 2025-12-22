@@ -4,6 +4,26 @@ from datetime import datetime
 
 
 def custom_round(row):
+    """Compute combined rushing+receiving yard points with special rounding.
+
+    Intent:
+    - Combine `rush_yds` and `rec_yds` to count how many whole "10-yard"
+      units a player has across both categories, allowing small contributions
+      from both to combine into a full 10 (e.g., 5 rush + 5 rec -> 1 point).
+    - Special-case: if one category is zero and the other is < 10, return 0.
+      This prevents small single-category values (or negative values) from
+      producing non-zero or negative floor results.
+
+    Examples:
+    - rush=5, rec=5  -> (0.5 + 0.5) = 1.0 -> returns 1
+    - rush=10, rec=0 -> (1.0 + 0) = 1.0 -> returns 1
+    - rush=0, rec=9  -> special-case -> returns 0
+    - rush=0, rec=-5 -> special-case -> returns 0 (avoids floor(-0.5) => -1)
+    - rush=12, rec=8 -> (1.2 + 0.8) = 2.0 -> returns 2
+
+    The function expects `row` to be a mapping-like object (e.g. a pandas
+    Series) with keys `rush_yds` and `rec_yds`. Missing keys default to 0.
+    """
     a, b = row.get('rush_yds', 0), row.get('rec_yds', 0)
     if (a == 0 and b < 10) or (b == 0 and a < 10):
         return 0
@@ -13,6 +33,26 @@ def custom_round(row):
 
 
 def handle_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Resolve duplicate columns from DataFrame merges by filling missing values.
+
+    When merging multiple DataFrames (e.g., offensive, defensive, kicking stats)
+    with suffixes like '_df2' or '_df3', this function checks for suffixed columns
+    and fills missing values in the original column with data from the suffixed one.
+    The suffixed column is then dropped to avoid duplication.
+
+    Need: Merging stats from different sources often creates overlapping columns;
+    this ensures we don't lose data and maintain a clean DataFrame.
+
+    Intention: Preserve as much complete data as possible after merges, prioritizing
+    non-null values from the primary (original) column while supplementing with
+    secondary sources.
+
+    Args:
+        df: DataFrame with potential duplicate columns from merges.
+
+    Returns:
+        Modified DataFrame with duplicates resolved and suffixed columns removed.
+    """
     for col in list(df.columns):
         if col.endswith('_df2'):
             original_col = col.replace('_df2', '')
@@ -34,6 +74,28 @@ def handle_duplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def CalculatePoints(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculate fantasy football points from player stats using standard scoring rules.
+
+    This function takes a DataFrame of raw player statistics and computes point
+    totals for offensive, defensive, and kicking categories based on common
+    fantasy football scoring (e.g., 1 pt per 10 rush/rec yards, 6 pts per TD).
+    It handles missing columns gracefully and preserves legacy behaviors for
+    compatibility.
+
+    Need: Essential for converting raw NFL stats into fantasy points; used in
+    the fantasy scoring pipeline to generate point totals for players.
+
+    Intention: Provide accurate, consistent point calculations that match
+    historical outputs, including special rounding for combined yards and
+    double-counting of special teams TDs to maintain parity with prior systems.
+
+    Args:
+        df: DataFrame with player stats (e.g., pass_yds, rush_yds, etc.).
+
+    Returns:
+        DataFrame with added point columns (e.g., Total_Offensive_PTS) and
+        cleaned stats.
+    """
     # Defensive copy
     df = df.copy()
 
@@ -120,11 +182,25 @@ def CalculatePoints(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataFrame:
-    """Merge the three input DataFrames, handle duplicate columns, and calculate points.
+    """Orchestrate merging of stats DataFrames and compute fantasy points.
 
-    This function is adapted for Streamlit usage: it returns the resulting DataFrame
-    so the caller can convert it to CSV and present a download link. It does not
-    perform any AWS or side-effecting I/O.
+    Merges three input DataFrames (typically offensive, defensive, kicking stats)
+    on 'id', resolves duplicate columns by filling missing values, and applies
+    point calculations using standard fantasy scoring rules.
+
+    Need: Central function in the Streamlit app for processing user-uploaded
+    CSV files into a single DataFrame with computed points, enabling download
+    of results.
+
+    Intention: Provide a clean, side-effect-free pipeline for fantasy football
+    scoring, ensuring data integrity through merges and accurate point totals
+    for league management.
+
+    Args:
+        df1, df2, df3: DataFrames with player stats, each containing an 'id' column.
+
+    Returns:
+        DataFrame with merged stats, resolved duplicates, and added point columns.
     """
     # Merge DataFrames on 'id' (outer join) and let handle_duplicate_columns resolve conflicts
     merged_df = df1.copy()
@@ -137,20 +213,26 @@ def compute(df1: pd.DataFrame, df2: pd.DataFrame, df3: pd.DataFrame) -> pd.DataF
 
 
 def aggregate_team_scores(final_df: pd.DataFrame, teams: list) -> dict:
-    """Aggregate per-player and per-team scores with transparent calculation strings.
+    """Aggregate fantasy points into per-team and combined scores with transparency.
+
+    Matches team rosters (from CSV or DataFrame) to computed player points,
+    calculates per-player and team totals, and generates downloadable CSVs
+    with calculation strings for auditability.
+
+    Need: Essential for fantasy league scoring; takes individual player points
+    and groups them by user-defined teams for league standings and reporting.
+
+    Intention: Provide clear, verifiable team scores by enforcing ID-based
+    matching, filling missing data, and including detailed calculation strings
+    to build trust in the scoring process.
 
     Args:
-        final_df: DataFrame containing player stats and the columns
-            'Total_Kicking_PTS', 'Total_defensive_PTS', 'Total_Offensive_PTS' and 'id'.
-        teams: list of dicts where each dict has at least 'name' and either 'csv' (bytes)
-            or 'df' (DataFrame). Example: {'name': 'Jake', 'csv': b'...'}
+        final_df: DataFrame with player points ('Total_Kicking_PTS', etc.) and 'id'.
+        teams: List of team dicts/DataFrames with rosters and names.
 
     Returns:
-        A dict with keys:
-          - 'per_team': {team_name: DataFrame}
-          - 'per_team_csv': {team_name: bytes}
-          - 'combined_df': DataFrame (rows for all teams with team name)
-          - 'combined_csv': bytes
+        Dict with 'per_team' (DataFrames), 'per_team_csv' (bytes), 'combined_df',
+        and 'combined_csv' for app downloads.
     """
     from io import BytesIO
 
