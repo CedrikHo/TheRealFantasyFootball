@@ -21,13 +21,45 @@ with tabs[0]:
     # show a local image if present (non-fatal)
     try:
         from pathlib import Path
-        img_path = Path(__file__).parent / "SylvainFootBallMeme.png"
-        if img_path.exists():
-            st.image(str(img_path), use_container_width=True)
+        base = Path(__file__).parent
+        img_path = base / "SylvainFootBallMeme.png"
+        # Prefer image in Images/ folder, fall back to repo root for compatibility
+        base = Path(__file__).resolve().parent
+        candidates = [base / 'Images' / 'SylvainFootBallMeme.png', base / 'SylvainFootBallMeme.png']
+        found = None
+        for p in candidates:
+            if p.exists():
+                found = p
+                break
+        if found:
+            st.image(str(found), width='stretch')
         else:
-            st.info("Logo/image not found — place SylvainFootBallMeme.png in the repo root to display it.")
-    except Exception as _:
+            st.info('SylvainFootBallMeme.png not found. Place it in `Images/` or the repo root to display.')
+    except Exception:
         st.info("Unable to load Home image.")
+
+    # Instructions and team template download
+    st.markdown("**How to use this app**")
+    st.markdown(
+        "1. Download the team template CSV and use it to prepare one CSV per team.\n"
+        "2. Go to the **Teams** tab: for each team add a name, upload that team's CSV, then click **Add team**.\n"
+        "3. When all teams are uploaded, go to the **Compute** tab and upload the three required files: `ALLPLAYERSTATS.CSV`, `DEFENSIVESTATS.CSV`, and `KICKERSTATS.CSV`.\n"
+        "4. Click **Submit** to run the calculator.\n"
+        "5. Open the **Results** tab to download each team's calculated CSV, or download all teams combined.\n"
+        "\nNotes: each team must have its own CSV file containing an `id` column that matches the computed results `id` values."
+    )
+
+    # provide a downloadable template (kept in repo under test/sample_csvs)
+    try:
+        template_path = base / 'test' / 'sample_csvs' / 'TEAMEXAMPLE.csv'
+        if template_path.exists():
+            with open(template_path, 'rb') as _tf:
+                tpl_bytes = _tf.read()
+            st.download_button('Download Team Template CSV', data=tpl_bytes, file_name='TEAMEXAMPLE.csv', mime='text/csv')
+        else:
+            st.info('Team template not found in repo (test/sample_csvs/TEAMEXAMPLE.csv)')
+    except Exception:
+        st.info('Unable to load team template for download')
 
 with tabs[1]:
     st.header("Compute")

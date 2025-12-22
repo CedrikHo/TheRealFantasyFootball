@@ -2,6 +2,8 @@
 
 This is a minimal Streamlit app scaffold that accepts three CSV uploads, runs the project `compute` function (adapted from the Lambda code), and shows downloadable results with timestamps.
 
+Data source: We get our data from https://fantasydata.com/
+
 Files added:
 
 - `app.py` — main Streamlit app (Home / Compute / Results tabs)
