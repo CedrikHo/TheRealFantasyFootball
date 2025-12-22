@@ -17,8 +17,17 @@ st.title("Fantasy Football Point Calculator")
 tabs = st.tabs(["Home", "Compute", "Teams", "Results"])
 
 with tabs[0]:
-    st.header("Welcome")
-    st.write("Welcome to the Fantasy Page Calculation")
+    st.header("Custom Fantasy Football Calculator")
+    # show a local image if present (non-fatal)
+    try:
+        from pathlib import Path
+        img_path = Path(__file__).parent / "SylvainFootBallMeme.png"
+        if img_path.exists():
+            st.image(str(img_path), use_container_width=True)
+        else:
+            st.info("Logo/image not found — place SylvainFootBallMeme.png in the repo root to display it.")
+    except Exception as _:
+        st.info("Unable to load Home image.")
 
 with tabs[1]:
     st.header("Compute")
