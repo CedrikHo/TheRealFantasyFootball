@@ -136,7 +136,8 @@ Notes and caveats:
 
 - A shim makes `wine64` detectable, but if the underlying `wine` build lacks full 64-bit support packaging may still fail. In that case either use a different Wine distribution or build Windows artifacts on a native Windows runner (GitHub Actions `windows-latest`) which avoids Wine entirely.
 - On Apple Silicon you may need Rosetta or an x86 Homebrew install for some Wine builds; CI on `windows-latest` is the most robust option for Windows artifacts.
-- If you prefer, I can add a GitHub Actions workflow that builds Windows artifacts on `windows-latest` and uploads them as build artifacts.
+
+IMPORTANT NOTE : I NEVER GOT WINE TO WORK EVEN WITH SHIM, IT TOOK AWAY ELECTRON BUILD ERROR BUT THE EXE WHEN OPENED RENDERD AN EMPTY APPLICATION PAGE! NO WINDOWS EXE THAT WAS USABLE WAS TRULLY BUILT BUT IT DID WORK FOR MAC OS. 
 
 Recent changes to `utils.py`
 
@@ -225,3 +226,37 @@ See Streamlit docs for details: https://docs.streamlit.io/knowledge-base/deploy/
 
 
 Streamlit URL as of Dec 21 2025. : https://therealfantasyfootball-j5qcdzaa3apcognnt5gapl.streamlit.app/
+
+**CSV Comparison (how we validate outputs)**
+
+- Tool: `test/test_utils.py` — a small comparator included in this repo. It provides a CLI and programmatic API (`compare_csvs()` / `print_report()`).
+- CLI usage (example):
+
+```bash
+python test/test_utils.py <reference.csv> <new.csv> --id-col id --tol 1e-6 --max-diffs 1000000
+```
+
+- Exact comparison rules used by the comparator:
+	- Rows are matched by the `id` column (case-insensitive lookup for common id names like `id`, `player_id`, `player id`).
+	- Columns present in one file but not the other are reported.
+	- Numeric columns: values are coerced to numbers and compared with absolute tolerance `--tol` (default `1e-6`). If one side fails numeric parse it is treated as `0.0` for the numeric comparison (this mirrors defensive behavior used during analysis reporting).
+	- Text columns: compared exactly after trimming whitespace (case-sensitive).
+	- `difference` is `A - B` for numeric columns, or a tuple-like `(A != B)` string for text mismatches.
+
+- Outputs produced by the repository helper (when run as shown above):
+	- `test/output/full_diffs.csv` — one row per differing field: `id,column,value_a,value_b,difference`.
+	- `test/output/detailed_side_by_side.csv` — per-`id` × per-column rows showing `value_a`, `value_b`, `type`, `equal`, and `difference` for exhaustive inspection.
+	- `test/output/summary.txt` — short summary of columns-only-in-one-file, ids-only-in-one-file, and first N diffs.
+
+- Example programmatic usage (Python):
+
+```python
+from test.test_utils import compare_csvs, print_report
+res = compare_csvs('reference.csv', 'new.csv', id_col='id', float_tol=1e-6)
+print_report(res)
+```
+
+- Notes about how the assistant ran comparisons in this workspace during debugging:
+	- The comparator was executed using the workspace Python interpreter (the project's virtualenv when active, e.g. `.venv/bin/python`). The helper code writes outputs to `test/output/` by convention when running the scripted helpers included in this repo.
+
+If you'd like the comparator to treat missing values as `NULL` rather than `0.0`, or to do case-insensitive text comparisons, I can add flags to `test/test_utils.py` and re-run the comparisons.

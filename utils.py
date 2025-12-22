@@ -80,12 +80,17 @@ def CalculatePoints(df: pd.DataFrame) -> pd.DataFrame:
     df['Interception_Defensive_PTS'] = (S('def_int').apply(np.floor) * 6).apply(np.floor)
     df['SpecialTeamsTouchdowns_PTS'] = (S('def_td').apply(np.floor) * 6).apply(np.floor)
     df['FumblesForced_PTS'] = (S('fum_forced').apply(np.floor) * 4).apply(np.floor)
+    # restore explicit recovered count (floor) to match legacy Lambda behavior
+    df['FumblesRecovered'] = S('fum_recovered').apply(np.floor)
     df['FumblesRecovered_PTS'] = (S('fum_recovered').apply(np.floor) * 2).apply(np.floor)
 
+    # Legacy parity: original Lambda added `SpecialTeamsTouchdowns_PTS` twice
+    # (counting a special-teams touchdown double). Preserve that behavior
+    # here to match historical outputs exactly.
     df['Total_defensive_PTS'] = (
         df['AssistedTackles_PTS'] + df['SoloTackles_PTS'] + df['PassesDefended_PTS'] +
         df['Sacks_PTS + Assisted Sacks_PTS'] + df['Safeties_PTS'] + df['SpecialTeamsTouchdowns_PTS'] +
-        df['Interception_Defensive_PTS'] + df['FumblesForced_PTS'] + df['FumblesRecovered_PTS']
+        df['Interception_Defensive_PTS'] + df['SpecialTeamsTouchdowns_PTS'] + df['FumblesForced_PTS'] + df['FumblesRecovered_PTS']
     )
 
     # Kicking

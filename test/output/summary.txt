@@ -1,10 +1,7 @@
 A: /Users/cedrikho/fantasy_streamlit/test/real_data/Week16-2025/Fantasy_Football_Results_20251221_231005.csv
 B: /Users/cedrikho/fantasy_streamlit/test/sample_csvs/FINALRESULTS.csv
-Columns only in A: ['FumblesRecovered']
+Columns only in A: []
 Columns only in B: []
 IDs only in A (0): []
 IDs only in B (0): []
-Differences found: 1
-
-First 200 diffs:
-id=25026 col=Total_defensive_PTS A=21.0 B=15.0 diff=6.0
+Differences found: 0
