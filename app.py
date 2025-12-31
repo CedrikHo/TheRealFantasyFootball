@@ -40,14 +40,27 @@ with tabs[0]:
 
     # Instructions and team template download
     st.markdown("**How to use this app**")
-    st.markdown(
-        "1. Download the team template CSV and use it to prepare one CSV per team.\n"
-        "2. Go to the **Teams** tab: for each team add a name, upload that team's CSV, then click **Add team**.\n"
-        "3. When all teams are uploaded, go to the **Compute** tab and upload the three required files: `ALLPLAYERSTATS.CSV`, `DEFENSIVESTATS.CSV`, and `KICKERSTATS.CSV`.\n"
-        "4. Click **Submit** to run the calculator.\n"
-        "5. Open the **Results** tab to download each team's calculated CSV, or download all teams combined.\n"
-        "\nNotes: each team must have its own CSV file containing an `id` column that matches the computed results `id` values."
-    )
+    st.markdown("""
+                ### **How to use this app**
+                1. Download the team template CSV and use it to prepare one CSV per team.
+                2. Go to the **Teams** tab: for each team add a name, upload that team's CSV, then click **Add team**.
+                3. When all teams are uploaded, go to the **Compute** tab and upload the three required files: `ALLPLAYERSTATS.CSV`, `DEFENSIVESTATS.CSV`, and `KICKERSTATS.CSV`.
+                4. Click **Submit** to run the calculator.
+                5. Open the **Results** tab to download each team's calculated CSV, or download all teams combined.
+
+                **Notes:** each team must have its own CSV file containing an `id` column that matches the computed results `id` values.
+
+                ---
+
+                ### **Comment utiliser cette application**
+                1. Téléchargez le modèle de fichier CSV et utilisez-le pour préparer un fichier CSV par équipe.
+                2. Allez dans l'onglet **Teams** : pour chaque équipe, ajoutez un nom, téléchargez le fichier CSV de cette équipe, puis cliquez sur **Add team**.
+                3. Une fois toutes les équipes chargées, allez dans l'onglet **Compute** et téléchargez les trois fichiers requis : `ALLPLAYERSTATS.CSV`, `DEFENSIVESTATS.CSV`, et `KICKERSTATS.CSV`.
+                4. Cliquez sur **Submit** pour lancer le calculateur.
+                5. Ouvrez l'onglet **Results** pour télécharger le fichier CSV calculé de chaque équipe, ou téléchargez les résultats combinés de toutes les équipes.
+
+                **Remarques :** chaque équipe doit avoir son propre fichier CSV contenant une colonne `id` qui correspond aux valeurs `id` des résultats calculés.
+                """)
 
     # provide a downloadable template (kept in repo under test/sample_csvs)
     try:
